@@ -9,15 +9,32 @@ const IndexPage: NextPage = (): ReactElement => {
   const [firstinput, setFirstinput] = useState<boolean>(true);
 
   const handleDigitClick = (digit: string) => {
+    console.log(digit)
+    console.log(firstinput) 
     if (firstinput){
-      setDisplayValue(digit)
+      if (digit === '00') {
+        setDisplayValue('0');
+      } else if (digit==='.'){
+        setDisplayValue('0.');
+      } else {
+        setDisplayValue(digit);
+      }
       setFirstinput(false)
       return
     }
     if (displayValue === '0') {
+     if(digit==='.') {
+      setDisplayValue('0.')
+      return 
+     } 
+     if(digit==='00') {
+      setDisplayValue('0')
+      return 
+    }
       setDisplayValue(digit);
      // setOperator('');
-    } else {
+    } 
+    else {
       setDisplayValue(displayValue + digit);
     }
   };
@@ -61,18 +78,29 @@ const IndexPage: NextPage = (): ReactElement => {
     console.log('handleEqualsClick called'); // コンソールログの追加
     console.log(firstOperand)
     console.log(operator)
+    setFirstinput(true)
     if (firstOperand && operator) {
       const result = calculate();
       setDisplayValue(result.toString());
       setFirstOperand(result.toString());
       setOperator('');
-    }
-  };
+    return
+   }
+   //'3.000' (string) -> 3 (number) -> '3' (string) 
+     // parseFloat(displayValue);
+     // `${parseFloat(displayValue)}`
+      setDisplayValue( `${parseFloat(displayValue)}`)
+    } 
+      
+  
+  
+;
 
   const handleClearClick = () => {
     setDisplayValue('0');
     setFirstOperand('');
     setOperator('');
+    setFirstinput(true)
   };
 
   return (
@@ -155,7 +183,7 @@ const IndexPage: NextPage = (): ReactElement => {
             </Button>
             <Button
               className="py-2 bg-cyan-600 text-white ronded border border-gray-200 cursor-pointer"
-              onClick={() => handleOperatorClick('.')}>
+              onClick={() => handleDigitClick('.')}>
                 .
             </Button>
             <Button
