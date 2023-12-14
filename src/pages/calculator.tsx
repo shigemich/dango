@@ -11,7 +11,10 @@ const IndexPage: NextPage = (): ReactElement => {
   const handleDigitClick = (digit: string) => {
     console.log(digit)
     console.log(firstinput) 
-    if (firstinput){
+    if (digit === '.' && displayValue.includes('.')){
+      return
+    }
+    if (firstinput){     
       if (digit === '00') {
         setDisplayValue('0');
       } else if (digit==='.'){
