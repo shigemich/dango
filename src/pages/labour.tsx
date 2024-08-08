@@ -1,215 +1,179 @@
-import { NextPage } from 'next';
+import { promises } from 'fs';
+import { GetStaticProps, NextPage } from 'next';
+import { join } from 'path';
 import React, { ReactElement, useState } from 'react';
 import { Button } from '../components/Button';
+import { CatImage } from '../components/CatImage';
+import { Country, RandomCat } from '../lib/Types.js';
 
-const IndexPage: NextPage = (): ReactElement => {
-  const [displayValue, setDisplayValue] = useState<string>('0');
-  const [firstOperand, setFirstOperand] = useState<string>('');
-  const [operator, setOperator] = useState<string>('');
-  const [firstinput, setFirstinput] = useState<boolean>(true);
+type LabourHour = {
+  start: string;
+  end: string;
+};
 
-  const handleDigitClick = (digit: string) => {
-    console.log(digit)
-    console.log(firstinput) 
-    if (digit === '.' && displayValue.includes('.')){
-      return
-    }
-    if (firstinput){     
-      if (digit === '00') {
-        setDisplayValue('0');
-      } else if (digit==='.'){
-        setDisplayValue('0.');
-      } else {
-        setDisplayValue(digit);
-      }
-      setFirstinput(false)
-      return
-    }
-    if (displayValue === '0') {
-     if(digit==='.') {
-      setDisplayValue('0.')
-      return 
-     } 
-     if(digit==='00') {
-      setDisplayValue('0')
-      return 
-    }
-      setDisplayValue(digit);
-     // setOperator('');
-    } 
-    else {
-      setDisplayValue(displayValue + digit);
-    }
-  };
+type Props = Readonly<{
+  countries: Array<Country>;
+}>;
 
-  const handleOperatorClick = (selectedOperator: string) => {
-    if (firstOperand !=='' ) {
-      // If there's already a first operand, perform the calculation
-      const result = calculate();
-      setDisplayValue(result.toString());
-      setFirstOperand(result.toString());
-      console.log(result)
-    } 
-    else {
-      setFirstOperand(displayValue);
-    }
-      console.log(selectedOperator)
-    setOperator(selectedOperator);
-    setFirstinput(true)
-    
-  };
+const IndexPage: NextPage<Props> = ({ countries }: Props): ReactElement => {
+  
+  const [labourHours, setLabourHours] = useState<LabourHour>({
+    start: '',
+    end: ''
+  });
 
-  const calculate = () => {
-    const num1 = parseFloat(firstOperand);
-    const num2 = parseFloat(displayValue);
+  const [breakTimes, setBreakTimes] = useState<Array<LabourHour>>([]);
 
-    switch (operator) {
-      case '+':
-        return num1 + num2;
-      case '-':
-        return num1 - num2;
-      case '*':
-        return num1 * num2;
-      case '/':
-        return num1 / num2;
-      default:
-        return num2;
-    }
-  };
-
-  const handleEqualsClick = () => {
-    console.log('handleEqualsClick called'); // コンソールログの追加
-    console.log(firstOperand)
-    console.log(operator)
-    setFirstinput(true)
-    if (firstOperand && operator) {
-      const result = calculate();
-      setDisplayValue(result.toString());
-      setFirstOperand(result.toString());
-      setOperator('');
-    return
-   }
-   //'3.000' (string) -> 3 (number) -> '3' (string) 
-     // parseFloat(displayValue);
-     // `${parseFloat(displayValue)}`
-      setDisplayValue( `${parseFloat(displayValue)}`)
-    } 
+  const calculateLabourTime = (): string => {
+    console.log(labourHours)
+      const start = labourHours.start.split(':');
+      const end = labourHours.end.split(':');
+      const startHour = Number(start[0]);
+      const startMinute = Number(start[1]);
+      const endHour = Number(end[0]);
+      const endMinute = Number(end[1]);
       
-  
-  
-;
+      if (Number.isNaN(startHour) || Number.isNaN(startMinute) || Number.isNaN(endHour) || Number.isNaN(endMinute)) {
+        return '';
+      }
 
-  const handleClearClick = () => {
-    setDisplayValue('0');
-    setFirstOperand('');
-    setOperator('');
-    setFirstinput(true)
+      const totalLabourMinutes = ((endHour - startHour) * 60 + (endMinute - startMinute));
+      const totalBreakMinutes = calculateBreakMinutes();
+      const netLabourMinutes = totalLabourMinutes - totalBreakMinutes;
+      const hours = Math.floor(netLabourMinutes / 60);
+      const minutes = netLabourMinutes % 60;
+      
+      return `${hours}:${minutes.toString().padStart(2, '0')}`;
+
+  };
+
+  const calculateBreakMinutes = (breakTime:LabourHour): number => {
+        const start = breakTime.start.split(':');
+        const end = breakTime.end.split(':');
+        const startHour = Number(start[0]);
+        const startMinute = Number(start[1]);
+        const endHour = Number(end[0]);
+        const endMinute = Number(end[1]);
+        
+        if (Number.isNaN(startHour) || Number.isNaN(startMinute) || Number.isNaN(endHour) || Number.isNaN(endMinute)) {
+          return 0
+        }
+        
+        const startMinutes = startHour * 60 + startMinute;
+        const endMinutes = endHour * 60 + endMinute;
+       return endMinutes - startMinutes 
+      
+  };
+
+  const handleStartTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLabourHours(prevState => ({
+      ...prevState,
+      start: e.target.value
+    }));
+  };
+
+  const handleEndTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLabourHours(prevState => ({
+      ...prevState,
+      end: e.target.value
+    }));
+  };
+
+  const handleBreakStartTimeChange = (index: number, value: string) => {
+    const newBreakTimes = [...breakTimes];
+    newBreakTimes[index] = { ...newBreakTimes[index], start: value };
+    setBreakTimes(newBreakTimes);
+  };
+
+  const handleBreakEndTimeChange = (index: number, value: string) => {
+    const newBreakTimes = [...breakTimes];
+    newBreakTimes[index] = { ...newBreakTimes[index], end: value };
+    setBreakTimes(newBreakTimes);
+  };
+
+  const handleAddBreakTime = () => {
+    setBreakTimes([...breakTimes, { start: '', end: '' }]);
+  };
+
+  const handleDeleteLastBreakTime = () => {
+    if (breakTimes.length > 0) {
+      const newBreakTimes = breakTimes.slice(0, -1);
+      setBreakTimes(newBreakTimes);
+    }
   };
 
   return (
     <>
       <div className="m-10 p-4 w-2/3 mx-auto shadow-lg border-2 rounded-2xl">
         <div className="mx-auto">
-          <div className="p-3 mb-3 border-2 rounded h-full w-full text-right">
-            <span className="text-gray-700 select-none">{displayValue}</span>
-          </div>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-3 gap-2">
+            <span className="text-gray-800 text-lg">勤務開始時間</span>
+            <span className="text-gray-800 text-lg">勤務終了時間</span>
+            <span className="text-gray-800 text-lg">労働時間（休憩除く）</span>
+            <input
+              className="py-2 px-3 border-2 rounded border-gray-200 cursor-text"
+              type="text"
+              value={labourHours.start}
+              onChange={handleStartTimeChange}
+            />
+            <input
+              className="py-2 px-3 border-2 rounded border-gray-200 cursor-text"
+              type="text"
+              value={labourHours.end}
+              onChange={handleEndTimeChange}
+            />
+            <span className="select-none text-xl font-mono text-gray-700 text-right">
+              {calculateLabourTime()}
+            </span>
+            <span className="text-gray-800 text-lg">休憩開始時間</span>
+            <span className="text-gray-800 text-lg">休憩終了時間</span>
+            <span className="text-gray-800 text-lg">休憩時間</span>
+            {breakTimes.map((breakTime, index) => (
+              <React.Fragment key={index}>
+                <input
+                  className="py-2 px-3 border-2 rounded border-gray-200 cursor-text"
+                  type="text"
+                  value={breakTime.start}
+                  onChange={(e) => handleBreakStartTimeChange(index, e.target.value)}
+                />
+                <input
+                  className="py-2 px-3 border-2 rounded border-gray-200 cursor-text"
+                  type="text"
+                  value={breakTime.end}
+                  onChange={(e) => handleBreakEndTimeChange(index, e.target.value)}
+                />
+                <span className="select-none text-xl font-mono text-gray-700 text-right">
+                  {calculateBreakMinutes(breakTime) / 60}:{(calculateBreakMinutes(breakTime) % 60).toString().padStart(2, '0')}
+                </span>
+              </React.Fragment>
+            ))}
             <Button
               className="py-2 bg-cyan-600 text-white rounded border border-gray-200 cursor-pointer"
-              onClick={() => handleDigitClick('7')}>
-                7
+              onClick={handleAddBreakTime}>
+                休憩時間を入力する
             </Button>
             <Button
-              className="py-2 bg-cyan-600 text-white rounded border border-gray-200 cursor-pointer"
-              onClick={() => handleDigitClick('8')}>
-                8
+              className="py-2 bg-pink-300 text-white rounded border border-gray-200 cursor-pointer"
+              onClick={handleDeleteLastBreakTime}>
+                一番下の休憩時間を削除する
             </Button>
-            <Button
-              className="py-2 bg-cyan-600 text-white rounded border border-gray-200 cursor-pointer"
-              onClick={() => handleDigitClick('9')}>
-                9
-            </Button>
-            <Button
-              className="py-2 bg-cyan-600 text-white rounded border border-gray-200 cursor-pointer"
-              onClick={() => handleOperatorClick('+')}>
-                +
-            </Button>            
-            <Button
-              className="py-2 bg-cyan-600 text-white rounded border border-gray-200 cursor-pointer"
-              onClick={() => handleDigitClick('4')}>
-                4
-            </Button>
-            <Button
-              className="py-2 bg-cyan-600 text-white rounded border border-gray-200 cursor-pointer"
-              onClick={() => handleDigitClick('5')}>
-                5
-            </Button>
-            <Button
-              className="py-2 bg-cyan-600 text-white rounded border border-gray-200 cursor-pointer"          
-              onClick={() => handleDigitClick('6')}>
-                6 
-            </Button>
-            <Button
-              className="py-2 bg-cyan-600 text-white rounded border border-gray-200 cursor-pointer"
-              onClick={() => handleOperatorClick('-')}>
-                -
-            </Button>                
-            <Button
-              className="py-2 bg-cyan-600 text-white rounded border border-gray-200 cursor-pointer"
-              onClick={() => handleDigitClick('1')}>
-                1
-              </Button>
-            <Button
-              className="py-2 bg-cyan-600 text-white rounded border border-gray-200 cursor-pointer"
-              onClick={() => handleDigitClick('2')}>
-                2
-            </Button>
-            <Button
-              className="py-2 bg-cyan-600 text-white rounded border border-gray-200 cursor-pointer"
-              onClick={() => handleDigitClick('3')}>
-                3
-            </Button>
-            <Button
-              className="py-2 bg-cyan-600 text-white rounded border border-gray-200 cursor-pointer"
-              onClick={() => handleOperatorClick('*')}>
-                *
-            </Button>              
-            <Button
-              className="py-2 bg-cyan-600 text-white rounded border border-gray-200 cursor-pointer"
-              onClick={() => handleDigitClick('0')}>
-                0
-            </Button>
-            <Button
-              className="py-2 bg-cyan-600 text-white ronded border border-gray-200 cursor-pointer"
-              onClick={() => handleDigitClick('00')}>
-              00
-            </Button>
-            <Button
-              className="py-2 bg-cyan-600 text-white ronded border border-gray-200 cursor-pointer"
-              onClick={() => handleDigitClick('.')}>
-                .
-            </Button>
-            <Button
-              className="py-2 bg-cyan-600 text-white rounded border border-gray-200 cursor-pointer"
-              onClick={() => handleOperatorClick('/')}>
-                /
-            </Button> 
-            <Button
-              className="py-2 bg-cyan-600 text-white rounded border border-gray-200 cursor-pointer"
-              onClick={handleClearClick}>
-                C
-            </Button>                              
-            <Button
-              className="py-2 bg-cyan-600 text-white rounded border border-gray-200 cursor-pointer"
-              onClick={handleEqualsClick}>
-                =
-            </Button>             
           </div>
         </div>
       </div>
-      
     </>
   );
 };
 
+export const getStaticProps: GetStaticProps<Props> = async () => {
+  const buffer = await promises.readFile(join(process.cwd(), 'json', 'countries.json'));
+  const str  = buffer.toString();
+
+  return {
+    props: {
+      countries: JSON.parse(str) as Array<Country>
+    }
+  };
+};
+
+// eslint-disable-next-line import/no-default-export
 export default IndexPage;
