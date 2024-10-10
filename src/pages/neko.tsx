@@ -26,6 +26,9 @@ const IndexPage: NextPage<Props> = ({ countries }: Props): ReactElement => {
 
   return (
     <>
+         <div className="m-10 p-4 w-2/3 mx-auto shadow-lg border-2 rounded-2xl">
+        <CatImage cat={catImage} />
+      </div>
       <div className="m-10 p-4 w-2/3 mx-auto shadow-lg border-2 rounded-2xl">
         <div className="mx-auto">
           <div className="p-3 mb-3 border-2 rounded h-full w-full text-right">
@@ -103,9 +106,7 @@ const IndexPage: NextPage<Props> = ({ countries }: Props): ReactElement => {
           })}
         </ul>
       </div>
-      <div className="m-10 p-4 w-2/3 mx-auto shadow-lg border-2 rounded-2xl">
-        <CatImage cat={catImage} />
-      </div>
+ 
     </>
   );
 };

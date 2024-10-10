@@ -59,6 +59,8 @@ const IndexPage: NextPage = (): ReactElement => {
     
   };
 
+  
+
   const calculate = () => {
     const num1 = parseFloat(firstOperand);
     const num2 = parseFloat(displayValue);
